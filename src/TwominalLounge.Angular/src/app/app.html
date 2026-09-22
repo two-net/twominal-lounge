@@ -1,0 +1,1466 @@
+<div class="relative w-screen h-screen overflow-hidden flex flex-col bg-slate-950 font-sans text-slate-100 select-none text-sm">
+  <!-- Loading Splash -->
+  @if (isLoading()) {
+    <div class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 gap-4">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-2xl shadow-xl shadow-teal-500/20 animate-pulse">
+        <svg class="w-7 h-7 text-slate-950 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      </div>
+      <div class="text-center">
+        <h1 class="text-lg font-bold text-slate-100">Twominal Lounge</h1>
+        <p class="text-xs text-slate-400 mt-1">Connecting to 2D spatial video gateway...</p>
+      </div>
+      <div class="w-48 h-1.5 bg-slate-900 rounded-full overflow-hidden">
+        <div class="w-full h-full bg-teal-500 animate-[shimmer_1.5s_infinite]"></div>
+      </div>
+    </div>
+  }
+
+  <!-- Floating Feedback Toast -->
+  @if (copyFeedback()) {
+    <div class="fixed top-4 right-4 z-50 px-4 py-2.5 bg-teal-500 text-slate-950 font-bold text-xs rounded-xl shadow-2xl flex items-center gap-2 animate-fade-in border border-teal-400">
+      <span>✓</span>
+      <span>{{ copyFeedback() }}</span>
+    </div>
+  }
+
+  @if (currentRoom()) {
+    <!-- Audio Context Autoplay Unblocker Banner -->
+    @if (api.spatialAudio.isAudioContextSuspended()) {
+      <div
+        (click)="api.spatialAudio.resumeAudioContext()"
+        class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-1.5 text-xs text-center cursor-pointer transition-all flex items-center justify-center gap-2 z-30 shadow-md select-none animate-pulse"
+        title="Click to enable sound"
+      >
+        <span>🔊 Audio paused by browser policy — Click anywhere or tap here to enable game & voice audio</span>
+      </div>
+    }
+
+    <!-- Title Bar (Header) -->
+    <header class="h-14 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-4 z-20 shrink-0 select-none gap-4">
+      <!-- Lounge Identity & Status -->
+      <div class="flex items-center gap-3 shrink-0">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center shadow-md shadow-teal-500/20">
+          <svg class="w-5 h-5 text-slate-950 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-white tracking-wide text-sm sm:text-base">Twominal Lounge</h1>
+            
+            <!-- Room Switcher Trigger & Code Badge -->
+            <div class="flex items-center gap-1.5">
+              <button
+                (click)="showRoomSwitcher.set(true)"
+                class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-200 border border-slate-700 transition flex items-center gap-1"
+                title="Switch Room or View Directory"
+              >
+                <span class="font-semibold text-white">{{ currentRoom()?.name }}</span>
+                <span class="text-teal-400">▼</span>
+              </button>
+              <button
+                (click)="copyRoomCode()"
+                class="px-2 py-0.5 rounded font-mono text-[10px] bg-teal-950/80 text-teal-300 border border-teal-500/40 hover:bg-teal-900 transition flex items-center gap-1"
+                title="Click to copy Room Code"
+              >
+                <span>Code: {{ currentRoom()?.slug }}</span>
+                <span>📋</span>
+              </button>
+              <button
+                (click)="leaveRoom()"
+                class="px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/80 text-[11px] text-rose-300 border border-rose-800/60 transition flex items-center gap-1"
+                title="Leave Room and Return to Lobby"
+              >
+                <span>🚪</span>
+                <span>Leave</span>
+              </button>
+            </div>
+          </div>
+          <div class="hidden md:flex items-center gap-2 text-xs text-slate-400 border-l border-slate-800 pl-3">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span id="current-zone-label" class="text-teal-400 font-medium">
+              {{ canvasComp?.currentZoneTitle() || 'Main Lobby' }}
+            </span>
+            <span>•</span>
+            <span id="peers-count">{{ api.peers().size + 1 }} People</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Utilities -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Video Dock Toggle Button -->
+        <button
+          (click)="toggleVideoDock()"
+          id="btn-toggle-video-dock"
+          class="px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 shadow-sm"
+          [class.bg-teal-500/20]="!isVideoDockCollapsed()"
+          [class.text-teal-300]="!isVideoDockCollapsed()"
+          [class.border-teal-500/40]="!isVideoDockCollapsed()"
+          [class.bg-slate-800]="isVideoDockCollapsed()"
+          [class.text-slate-300]="isVideoDockCollapsed()"
+          [class.border-slate-700]="isVideoDockCollapsed()"
+          [title]="isVideoDockCollapsed() ? 'Show Video Dock' : 'Hide Video Dock'"
+        >
+          <span>📹</span>
+          <span class="hidden sm:inline">Video Dock</span>
+          @if (proximityPeers().length > 0) {
+            <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-teal-500 text-slate-950">
+              {{ proximityPeers().length }}
+            </span>
+          }
+        </button>
+
+        <button
+          (click)="copyInviteLink()"
+          id="btn-share-invite"
+          class="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-slate-950 font-semibold rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-teal-600/30 transition-all"
+          title="Copy shareable room URL"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+          </svg>
+          <span>Share Link</span>
+        </button>
+
+        <!-- Advanced tools dropdown buttons -->
+        <button
+          (click)="showWhiteboard.set(true)"
+          class="p-1.5 sm:px-2 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition"
+          title="Interactive Whiteboard"
+        >
+          📋
+        </button>
+        <button
+          (click)="showRoomEditor.set(true)"
+          class="p-1.5 sm:px-2 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition"
+          title="Room Layout Architect"
+        >
+          🛠️
+        </button>
+        <button
+          (click)="toggleBuildMode()"
+          [class.bg-amber-500]="isBuildMode()"
+          [class.text-slate-950]="isBuildMode()"
+          [class.font-bold]="isBuildMode()"
+          [class.shadow-amber-500/30]="isBuildMode()"
+          [class.bg-slate-800]="!isBuildMode()"
+          [class.text-slate-300]="!isBuildMode()"
+          class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border border-slate-700 hover:bg-amber-400 hover:text-slate-950 transition flex items-center gap-1.5 text-xs shadow"
+          title="Toggle Build Mode (Drag & Resize Private Zones)"
+        >
+          <span>🧱</span>
+          <span class="hidden md:inline">{{ isBuildMode() ? 'Exit Build' : 'Build Mode' }}</span>
+        </button>
+        <button
+          (click)="showDiagnostics.set(true)"
+          class="p-1.5 sm:px-2 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition"
+          title="Observability Telemetry & Diagnostics"
+        >
+          📊
+        </button>
+      </div>
+    </header>
+
+    <!-- Spatial Proximity Video Dock (Split from Title Bar) -->
+    @if (!isVideoDockCollapsed()) {
+      <section
+        id="video-dock-bar"
+        class="w-full bg-slate-900/85 backdrop-blur-md border-b border-slate-800/90 px-4 py-2 shrink-0 z-10 select-none shadow-md animate-fade-in"
+      >
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <!-- Dock Info Label -->
+          <div class="hidden lg:flex items-center gap-2 text-xs text-slate-400 shrink-0 select-none">
+            <div class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="font-medium text-slate-300 text-[11px]">Proximity Dock</span>
+              @if (proximityPeers().length > 0) {
+                <span class="text-[10px] text-teal-400 font-mono font-bold">({{ proximityPeers().length }} active)</span>
+              }
+            </div>
+          </div>
+
+          <!-- Spatial Proximity Video Dock -->
+          <div id="video-dock" class="flex items-center gap-3 overflow-x-auto py-1 px-2 max-w-5xl custom-scrollbar flex-1 justify-center">
+            <!-- User Self Video Card -->
+            <div id="self-card" class="relative group w-28 h-24 bg-slate-800 rounded-xl overflow-hidden border-2 border-teal-500/70 shadow-md flex-shrink-0 flex flex-col justify-between p-1.5 transition-all">
+              @if (webrtc.isCameraEnabled() && webrtc.localStream()) {
+                <video
+                  #selfVideo
+                  [srcObject]="webrtc.localStream()"
+                  autoplay
+                  playsinline
+                  muted
+                  (loadedmetadata)="$any($event.target).play()"
+                  class="absolute inset-0 w-full h-full object-cover"
+                ></video>
+              } @else {
+                <div
+                  id="self-avatar-preview"
+                  (click)="showAvatarSelector.set(true)"
+                  class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-teal-950 cursor-pointer group"
+                  title="Click to customize avatar archetype"
+                >
+                  <div
+                    class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-inner overflow-hidden border-2 border-white/30 group-hover:scale-105 transition"
+                    [style.backgroundColor]="userColor()"
+                    id="self-avatar-icon"
+                  >
+                    <img
+                      [src]="'/assets/sprites/characters/' + userCharacter() + '_down.png'"
+                      [alt]="userCharacter()"
+                      class="w-8 h-10 object-contain pixelated drop-shadow"
+                    />
+                  </div>
+                </div>
+              }
+              <div class="relative z-10 flex justify-between items-center">
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] font-semibold bg-black/60 px-1.5 py-0.5 rounded text-white backdrop-blur-sm">You</span>
+                  @if (webrtc.isScreenSharing()) {
+                    <span
+                      (click)="openPresentationStage()"
+                      class="text-[8px] font-bold bg-teal-500 text-slate-950 px-1 py-0.5 rounded shadow animate-pulse cursor-pointer"
+                      title="You are screen sharing - Click to view stage"
+                    >
+                      📺 Presenting
+                    </span>
+                  }
+                </div>
+                <div class="flex gap-1">
+                  <span
+                    id="mic-status-icon"
+                    class="w-4 h-4 rounded-full text-white flex items-center justify-center text-[9px]"
+                    [class.bg-emerald-500]="webrtc.isMicEnabled()"
+                    [class.bg-rose-500]="!webrtc.isMicEnabled()"
+                  >
+                    {{ webrtc.isMicEnabled() ? '🎤' : '🔇' }}
+                  </span>
+                </div>
+              </div>
+              <div class="relative z-10 flex justify-between items-end">
+                <span class="text-[9px] text-teal-300 bg-black/70 px-1 rounded font-mono">Local Audio</span>
+                <div class="flex items-center gap-1">
+                  @if (webrtc.isMicEnabled() && webrtc.hasAudioTrack()) {
+                    <!-- 3-bar dynamic mini VU meter -->
+                    <div class="flex items-end gap-0.5 h-3" title="Mic active - Input Level: {{ webrtc.micLevel() }}%">
+                      <div class="w-1 bg-emerald-400 rounded-full transition-all duration-75" [style.height.px]="webrtc.micLevel() > 5 ? 10 : 3"></div>
+                      <div class="w-1 bg-emerald-400 rounded-full transition-all duration-75" [style.height.px]="webrtc.micLevel() > 25 ? 12 : 3"></div>
+                      <div class="w-1 bg-emerald-400 rounded-full transition-all duration-75" [style.height.px]="webrtc.micLevel() > 50 ? 12 : 3"></div>
+                    </div>
+                  } @else {
+                    <div class="w-2 h-2 rounded-full bg-rose-500 ring-2 ring-slate-900" title="Mic Muted / Off"></div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Peer Cards Container (Dynamically Updated based on spatial proximity) -->
+            <div id="peer-videos" class="flex items-center gap-3">
+              @for (item of proximityPeers(); track item.peer.peer_id) {
+                <div
+                  class="relative group w-28 h-24 bg-slate-800 rounded-xl overflow-hidden border-2 flex-shrink-0 flex flex-col justify-between p-1.5 transition-all"
+                  [class.border-emerald-500]="item.volumePct > 60"
+                  [class.shadow-emerald-500/20]="item.volumePct > 60"
+                  [class.shadow-lg]="item.volumePct > 60"
+                  [class.border-slate-700]="item.volumePct <= 60"
+                >
+                  <!-- Background Avatar / Video -->
+                  @if (remoteStreamFor(item.peer.peer_id)) {
+                    <video
+                      [srcObject]="remoteStreamFor(item.peer.peer_id)"
+                      autoplay
+                      playsinline
+                      muted
+                      class="absolute inset-0 w-full h-full object-cover"
+                    ></video>
+                  } @else if (item.peer.avatarImg) {
+                    <img [src]="item.peer.avatarImg" [alt]="item.peer.display_name" class="absolute inset-0 w-full h-full object-cover opacity-85" />
+                  } @else {
+                    <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+                      <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow" [style.backgroundColor]="item.peer.avatar_config.hair_color">
+                        {{ item.peer.display_name.slice(0, 2).toUpperCase() }}
+                      </div>
+                    </div>
+                  }
+
+                  <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/50"></div>
+
+                  <div class="relative z-10 flex justify-between items-center">
+                    <div class="flex items-center gap-1 max-w-[70px]">
+                      <span class="text-[10px] font-semibold bg-black/60 px-1.5 py-0.5 rounded text-white backdrop-blur-sm truncate">
+                        {{ item.peer.display_name.split(' ')[0] }}
+                      </span>
+                      @if (item.peer.screen_sharing) {
+                        <span
+                          (click)="openPresentationStage()"
+                          class="text-[8px] font-bold bg-teal-500 text-slate-950 px-1 py-0.5 rounded shadow animate-pulse cursor-pointer"
+                          title="Screen sharing active - Click to watch presentation"
+                        >
+                          📺
+                        </span>
+                      }
+                    </div>
+                    <span
+                      class="w-4 h-4 rounded-full text-white flex items-center justify-center text-[9px] shadow"
+                      [class.bg-emerald-500]="!item.peer.mic_muted"
+                      [class.bg-rose-500]="item.peer.mic_muted"
+                    >
+                      {{ !item.peer.mic_muted ? '🎤' : '🔇' }}
+                    </span>
+                  </div>
+
+                  <div class="relative z-10 flex items-center justify-between">
+                    <div class="w-14 bg-slate-900/80 rounded-full h-1.5 overflow-hidden border border-slate-700">
+                      <div class="bg-emerald-400 h-full transition-all duration-150" [style.width.%]="item.volumePct"></div>
+                    </div>
+                    <span class="text-[9px] font-mono text-emerald-300 font-bold">{{ item.volumePct }}%</span>
+                  </div>
+                </div>
+              } @empty {
+                <div class="text-xs text-slate-500 italic px-3 py-4 border border-dashed border-slate-800 rounded-xl flex items-center gap-2">
+                  <span>📡</span>
+                  <span>Walk near a colleague to start audio/video</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Right Collapse Button -->
+          <div class="hidden lg:flex items-center gap-2 shrink-0">
+            <button
+              (click)="isVideoDockCollapsed.set(true)"
+              class="px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:text-slate-200 bg-slate-800/80 hover:bg-slate-700 rounded-lg border border-slate-700/60 transition flex items-center gap-1 cursor-pointer"
+              title="Collapse Video Dock to maximize canvas space"
+            >
+              <span>▲</span>
+              <span>Collapse</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    } @else {
+      <!-- Collapsed Video Dock Restore Bar -->
+      <div id="video-dock-collapsed-bar" class="w-full bg-slate-900/60 backdrop-blur-sm border-b border-slate-800/60 px-4 py-1 flex items-center justify-center shrink-0 z-10 select-none">
+        <button
+          (click)="isVideoDockCollapsed.set(false)"
+          class="px-3 py-0.5 text-xs text-teal-300 hover:text-teal-200 bg-slate-800/80 hover:bg-slate-700 rounded-full border border-slate-700/80 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+          title="Expand Video Dock"
+        >
+          <span>📹</span>
+          <span>Show Video Dock</span>
+          @if (proximityPeers().length > 0) {
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <span class="text-[10px] text-emerald-400 font-bold">({{ proximityPeers().length }} near)</span>
+          }
+        </button>
+      </div>
+    }
+
+  <!-- Main Workspace (Canvas + Sidebar) -->
+  <main class="relative flex-1 w-full h-full overflow-hidden flex">
+    <!-- Interactive Canvas Space -->
+    <div class="relative flex-1 h-full bg-slate-950 overflow-hidden">
+      @if (currentRoom()) {
+        <app-lounge-canvas
+          [room]="currentRoom()"
+          [isBuildMode]="isBuildMode()"
+          (buildModeChange)="isBuildMode.set($event)"
+          (layoutSaved)="onLayoutSaved($event)"
+          (openWhiteboard)="showWhiteboard.set(true)"
+        ></app-lounge-canvas>
+      }
+
+      <!-- Presentation Active Top Banner -->
+      @if (activeScreenPresenter() && (!isScreenModalOpen() || isScreenMinimized())) {
+        <div class="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-2 bg-slate-900/90 border border-teal-500/50 rounded-full shadow-xl backdrop-blur-md animate-fade-in">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-teal-400 animate-ping"></span>
+            <span class="text-xs text-white font-medium">
+              📺 <strong class="text-teal-300">{{ activeScreenPresenter()?.name }}</strong> is sharing screen
+            </span>
+          </div>
+          <button
+            (click)="openPresentationStage()"
+            class="px-3 py-1 rounded-full bg-teal-600 hover:bg-teal-500 text-slate-950 font-bold text-[11px] shadow transition"
+          >
+            Watch Screen ↗
+          </button>
+        </div>
+      }
+
+      <!-- Screen Presentation Stage (Full Expanded View) -->
+      @if (activeScreenPresenter() && isScreenModalOpen() && !isScreenMinimized()) {
+        <div
+          id="screen-share-stage-container"
+          class="absolute inset-4 z-40 flex flex-col bg-slate-900/95 border border-slate-700/90 rounded-2xl shadow-2xl backdrop-blur-md overflow-hidden animate-fade-in pointer-events-auto"
+        >
+          <!-- Stage Header -->
+          <div class="px-4 py-2.5 bg-slate-950/90 border-b border-slate-800 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2.5">
+              <span class="text-xl">🖥️</span>
+              <div>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span>{{ activeScreenPresenter()?.name }}'s Screen</span>
+                  <span class="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30 animate-pulse">
+                    LIVE BROADCAST
+                  </span>
+                </h3>
+                <p class="text-[11px] text-slate-400">High-Definition Screen Presentation • Real-Time Spatial Audio Sync</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <!-- Minimize to PiP button -->
+              <button
+                (click)="isScreenMinimized.set(true)"
+                class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center gap-1"
+                title="Minimize to floating window so you can walk around"
+              >
+                <span>🗗</span>
+                <span>Minimize</span>
+              </button>
+
+              <!-- Fullscreen button -->
+              <button
+                (click)="toggleFullscreenScreenShare()"
+                class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center gap-1"
+                title="Toggle Fullscreen View"
+              >
+                <span>⛶</span>
+                <span>Fullscreen</span>
+              </button>
+
+              <!-- Stop or Close button -->
+              @if (activeScreenPresenter()?.isLocal) {
+                <button
+                  (click)="toggleScreen()"
+                  class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md transition flex items-center gap-1"
+                >
+                  <span>⏹</span>
+                  <span>Stop Sharing</span>
+                </button>
+              } @else {
+                <button
+                  (click)="isScreenModalOpen.set(false)"
+                  class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs border border-slate-700 transition"
+                  title="Close Presentation View"
+                >
+                  ✕
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Video Projection Display with Collaborative Annotation Canvas & Shared Cursors -->
+          <div
+            class="relative flex-1 bg-black flex items-center justify-center overflow-hidden"
+          >
+            @if (activeScreenPresenter()?.stream) {
+              <div
+                class="relative max-w-full max-h-full flex items-center justify-center"
+                [style.aspectRatio]="screenVideoAspectRatio() || 'auto'"
+                (pointermove)="onScreenStagePointerMove($event)"
+                (pointerleave)="onScreenStagePointerLeave()"
+              >
+                <video
+                  #screenVideoStage
+                  [srcObject]="activeScreenPresenter()?.stream"
+                  autoplay
+                  playsinline
+                  [muted]="true"
+                  (loadedmetadata)="onScreenVideoMetadata($event); $any($event.target).play()"
+                  (canplay)="$any($event.target).play()"
+                  class="w-full h-full object-contain pointer-events-none"
+                ></video>
+
+                <!-- Real-time Collaborative Annotation Canvas Overlay -->
+                @if (screenAnnotationsVisible()) {
+                  <canvas
+                    #screenAnnotationCanvas
+                    (pointerdown)="onScreenAnnotationPointerDown($event)"
+                    (pointermove)="onScreenAnnotationPointerMove($event)"
+                    (pointerup)="onScreenAnnotationPointerUp($event)"
+                    (pointercancel)="onScreenAnnotationPointerUp($event)"
+                    class="absolute inset-0 w-full h-full z-10"
+                    [style.cursor]="screenAnnotationTool() === 'pointer' ? 'default' : screenAnnotationTool() === 'laser' ? 'crosshair' : screenAnnotationTool() === 'eraser' ? 'cell' : 'crosshair'"
+                  ></canvas>
+                }
+
+                <!-- Shared Remote Cursors Layer -->
+                @if (screenCursorsVisible()) {
+                  <div class="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+                    @for (cursor of activeScreenCursors(); track cursor.peer_id) {
+                      <div
+                        class="absolute -translate-x-1 -translate-y-1 transition-all duration-75 ease-out flex flex-col items-start select-none"
+                        [style.left.%]="cursor.x * 100"
+                        [style.top.%]="cursor.y * 100"
+                      >
+                        <!-- Cursor Arrow SVG -->
+                        <div class="relative">
+                          <svg class="w-5 h-5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" viewBox="0 0 24 24" fill="none">
+                            <path
+                              d="M3 3l7 18 3-7 7-3L3 3z"
+                              [attr.fill]="cursor.color"
+                              stroke="#0f172a"
+                              stroke-width="1.5"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                          <span
+                            class="absolute -top-1 -right-1 w-2 h-2 rounded-full border border-slate-900 animate-ping"
+                            [style.backgroundColor]="cursor.color"
+                          ></span>
+                        </div>
+
+                        <!-- Name Badge -->
+                        <div
+                          class="mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-lg flex items-center gap-1 border border-white/20 whitespace-nowrap backdrop-blur-sm"
+                          [style.backgroundColor]="cursor.color"
+                          style="color: #0f172a;"
+                        >
+                          <span>{{ cursor.display_name }}</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Floating Glassmorphic Annotation & Cursors Toolbar -->
+              <div
+                class="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-slate-900/90 hover:bg-slate-900/95 transition-all p-1.5 px-3 rounded-2xl border border-slate-700/80 shadow-2xl backdrop-blur-md select-none pointer-events-auto"
+              >
+                <!-- Tool Switchers -->
+                <div class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+                  <button
+                    (click)="setAnnotationTool('pointer')"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                    [class.bg-teal-500]="screenAnnotationTool() === 'pointer'"
+                    [class.text-slate-950]="screenAnnotationTool() === 'pointer'"
+                    [class.text-slate-300]="screenAnnotationTool() !== 'pointer'"
+                    [class.hover:bg-slate-700]="screenAnnotationTool() !== 'pointer'"
+                    title="Pointer Mode (Shared cursor pointing without drawing)"
+                  >
+                    <span>👆</span>
+                    <span class="hidden sm:inline">Pointer</span>
+                  </button>
+
+                  <button
+                    (click)="setAnnotationTool('laser')"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                    [class.bg-rose-500]="screenAnnotationTool() === 'laser'"
+                    [class.text-white]="screenAnnotationTool() === 'laser'"
+                    [class.text-slate-300]="screenAnnotationTool() !== 'laser'"
+                    [class.hover:bg-slate-700]="screenAnnotationTool() !== 'laser'"
+                    title="Laser Pointer (Auto-fading glowing light trail)"
+                  >
+                    <span>🔴</span>
+                    <span class="hidden sm:inline">Laser</span>
+                  </button>
+
+                  <button
+                    (click)="setAnnotationTool('pen')"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                    [class.bg-teal-500]="screenAnnotationTool() === 'pen'"
+                    [class.text-slate-950]="screenAnnotationTool() === 'pen'"
+                    [class.text-slate-300]="screenAnnotationTool() !== 'pen'"
+                    [class.hover:bg-slate-700]="screenAnnotationTool() !== 'pen'"
+                    title="Pen (Solid freehand ink drawing)"
+                  >
+                    <span>🖊️</span>
+                    <span class="hidden sm:inline">Pen</span>
+                  </button>
+
+                  <button
+                    (click)="setAnnotationTool('highlighter')"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                    [class.bg-teal-500]="screenAnnotationTool() === 'highlighter'"
+                    [class.text-slate-950]="screenAnnotationTool() === 'highlighter'"
+                    [class.text-slate-300]="screenAnnotationTool() !== 'highlighter'"
+                    [class.hover:bg-slate-700]="screenAnnotationTool() !== 'highlighter'"
+                    title="Highlighter (Semi-transparent glow stroke)"
+                  >
+                    <span>🖍️</span>
+                    <span class="hidden sm:inline">Highlight</span>
+                  </button>
+
+                  <button
+                    (click)="setAnnotationTool('arrow')"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                    [class.bg-teal-500]="screenAnnotationTool() === 'arrow'"
+                    [class.text-slate-950]="screenAnnotationTool() === 'arrow'"
+                    [class.text-slate-300]="screenAnnotationTool() !== 'arrow'"
+                    [class.hover:bg-slate-700]="screenAnnotationTool() !== 'arrow'"
+                    title="Arrow (Draw directional callout arrow)"
+                  >
+                    <span>➡️</span>
+                    <span class="hidden sm:inline">Arrow</span>
+                  </button>
+
+                  <button
+                    (click)="setAnnotationTool('rect')"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                    [class.bg-teal-500]="screenAnnotationTool() === 'rect'"
+                    [class.text-slate-950]="screenAnnotationTool() === 'rect'"
+                    [class.text-slate-300]="screenAnnotationTool() !== 'rect'"
+                    [class.hover:bg-slate-700]="screenAnnotationTool() !== 'rect'"
+                    title="Box (Draw rectangular frame)"
+                  >
+                    <span>🔲</span>
+                    <span class="hidden sm:inline">Box</span>
+                  </button>
+
+                  <button
+                    (click)="setAnnotationTool('eraser')"
+                    class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                    [class.bg-rose-500/20]="screenAnnotationTool() === 'eraser'"
+                    [class.text-rose-400]="screenAnnotationTool() === 'eraser'"
+                    [class.border]="screenAnnotationTool() === 'eraser'"
+                    [class.border-rose-500/40]="screenAnnotationTool() === 'eraser'"
+                    [class.text-slate-300]="screenAnnotationTool() !== 'eraser'"
+                    [class.hover:bg-slate-700]="screenAnnotationTool() !== 'eraser'"
+                    title="Eraser (Erase drawing annotations)"
+                  >
+                    <span>🧹</span>
+                    <span class="hidden sm:inline">Eraser</span>
+                  </button>
+                </div>
+
+                <div class="h-5 w-px bg-slate-700 mx-0.5"></div>
+
+                <!-- Color Palette -->
+                <div class="flex items-center gap-1.5">
+                  @for (c of ['#14b8a6', '#10b981', '#f59e0b', '#f43f5e', '#a855f7', '#ffffff']; track c) {
+                    <button
+                      (click)="screenAnnotationColor.set(c)"
+                      class="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110 shadow-sm"
+                      [style.backgroundColor]="c"
+                      [class.border-white]="screenAnnotationColor() === c"
+                      [class.scale-110]="screenAnnotationColor() === c"
+                      [class.border-transparent]="screenAnnotationColor() !== c"
+                    ></button>
+                  }
+                </div>
+
+                <div class="h-5 w-px bg-slate-700 mx-0.5"></div>
+
+                <!-- Stroke Size -->
+                <div class="flex items-center gap-1">
+                  @for (s of [2, 4, 8]; track s) {
+                    <button
+                      (click)="screenAnnotationSize.set(s)"
+                      class="w-6 h-6 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center transition border"
+                      [class.bg-teal-500]="screenAnnotationSize() === s"
+                      [class.text-slate-950]="screenAnnotationSize() === s"
+                      [class.border-teal-400]="screenAnnotationSize() === s"
+                      [class.bg-slate-800]="screenAnnotationSize() !== s"
+                      [class.text-slate-300]="screenAnnotationSize() !== s"
+                      [class.border-slate-700]="screenAnnotationSize() !== s"
+                    >
+                      {{ s }}
+                    </button>
+                  }
+                </div>
+
+                <div class="h-5 w-px bg-slate-700 mx-0.5"></div>
+
+                <!-- Actions: Undo, Clear, Visibility -->
+                <div class="flex items-center gap-1">
+                  <button
+                    (click)="undoScreenAnnotation()"
+                    class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition text-xs"
+                    title="Undo Last Stroke"
+                  >
+                    ↩️
+                  </button>
+                  <button
+                    (click)="clearScreenAnnotations()"
+                    class="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 transition text-xs font-semibold flex items-center gap-1"
+                    title="Clear All Annotations"
+                  >
+                    <span>🗑️</span>
+                    <span class="hidden sm:inline">Clear</span>
+                  </button>
+                  <button
+                    (click)="toggleScreenAnnotationsVisibility()"
+                    class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition text-xs"
+                    [title]="screenAnnotationsVisible() ? 'Hide Annotations' : 'Show Annotations'"
+                  >
+                    {{ screenAnnotationsVisible() ? '👁️' : '🕶️' }}
+                  </button>
+                  <button
+                    (click)="toggleScreenCursorsVisibility()"
+                    class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition text-xs"
+                    [class.text-teal-400]="screenCursorsVisible()"
+                    [title]="screenCursorsVisible() ? 'Hide Shared Cursors' : 'Show Shared Cursors'"
+                  >
+                    👥
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div class="flex flex-col items-center justify-center gap-3 text-slate-400">
+                <div class="w-10 h-10 border-4 border-teal-500/30 border-t-teal-400 rounded-full animate-spin"></div>
+                <p class="text-xs">Connecting to presenter's display stream...</p>
+                <button
+                  (click)="retryPresenterStream()"
+                  class="mt-1 px-3 py-1.5 rounded-lg bg-teal-600/30 hover:bg-teal-600/50 text-teal-300 border border-teal-500/40 text-[11px] font-semibold transition flex items-center gap-1.5 shadow"
+                >
+                  <span>🔄</span>
+                  <span>Reconnect Presentation Stream</span>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Floating Picture-in-Picture Mini Card (When Minimized or Watching in Background) -->
+      @if (activeScreenPresenter() && (isScreenMinimized() || !isScreenModalOpen())) {
+        <div
+          class="absolute bottom-4 right-4 z-40 w-72 h-48 bg-slate-900/95 border-2 border-teal-500/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all backdrop-blur-md group"
+        >
+          <div class="px-3 py-1.5 bg-slate-950/90 flex items-center justify-between text-xs border-b border-slate-800">
+            <div class="flex items-center gap-1.5 truncate">
+              <span class="text-xs">📺</span>
+              <span class="font-bold text-white truncate max-w-[130px] text-[11px]">
+                {{ activeScreenPresenter()?.name }}
+              </span>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                (click)="openPresentationStage()"
+                class="px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-500 text-slate-950 font-bold text-[10px] transition"
+                title="Expand to Full Presentation Stage"
+              >
+                Expand ↗
+              </button>
+              @if (activeScreenPresenter()?.isLocal) {
+                <button
+                  (click)="toggleScreen()"
+                  class="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-medium text-[10px] transition"
+                  title="Stop Sharing Screen"
+                >
+                  Stop
+                </button>
+              }
+            </div>
+          </div>
+          <div
+            (click)="openPresentationStage()"
+            class="relative flex-1 bg-black cursor-pointer flex items-center justify-center overflow-hidden"
+            title="Click to expand presentation"
+          >
+            @if (activeScreenPresenter()?.stream) {
+              <video
+                [srcObject]="activeScreenPresenter()?.stream"
+                autoplay
+                playsinline
+                [muted]="true"
+                (loadedmetadata)="$any($event.target).play()"
+                (canplay)="$any($event.target).play()"
+                class="w-full h-full object-cover"
+              ></video>
+            }
+            <div class="absolute inset-0 bg-transparent group-hover:bg-black/40 transition-all flex items-center justify-center">
+              <span class="opacity-0 group-hover:opacity-100 bg-teal-500 text-slate-950 font-bold text-[10px] px-2.5 py-1 rounded shadow-lg transition-opacity flex items-center gap-1">
+                <span>Expand View</span> ↗
+              </span>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Collapsible Sidebar (Matching demo.html) -->
+    @if (isSidebarOpen()) {
+      <aside id="chat-sidebar" class="w-80 bg-slate-900 border-l border-slate-800 flex flex-col h-full z-10 transition-all duration-300 animate-fade-in">
+        <!-- Tab Selector -->
+        <div class="flex border-b border-slate-800 text-xs font-semibold">
+          <button
+            (click)="activeSidebarTab.set('chat')"
+            class="flex-1 py-3 text-center border-b-2 transition"
+            [class.border-teal-500]="activeSidebarTab() === 'chat'"
+            [class.text-teal-400]="activeSidebarTab() === 'chat'"
+            [class.bg-slate-800/40]="activeSidebarTab() === 'chat'"
+            [class.border-transparent]="activeSidebarTab() !== 'chat'"
+            [class.text-slate-400]="activeSidebarTab() !== 'chat'"
+          >
+            Chat
+          </button>
+          <button
+            (click)="activeSidebarTab.set('users')"
+            class="flex-1 py-3 text-center border-b-2 transition"
+            [class.border-teal-500]="activeSidebarTab() === 'users'"
+            [class.text-teal-400]="activeSidebarTab() === 'users'"
+            [class.bg-slate-800/40]="activeSidebarTab() === 'users'"
+            [class.border-transparent]="activeSidebarTab() !== 'users'"
+            [class.text-slate-400]="activeSidebarTab() !== 'users'"
+          >
+            Users ({{ api.peers().size + 1 }})
+          </button>
+          <button
+            (click)="activeSidebarTab.set('logs')"
+            class="flex-1 py-3 text-center border-b-2 font-mono transition"
+            [class.border-teal-500]="activeSidebarTab() === 'logs'"
+            [class.text-teal-400]="activeSidebarTab() === 'logs'"
+            [class.bg-slate-800/40]="activeSidebarTab() === 'logs'"
+            [class.border-transparent]="activeSidebarTab() !== 'logs'"
+            [class.text-slate-400]="activeSidebarTab() !== 'logs'"
+          >
+            ORM Logs
+          </button>
+        </div>
+
+        <!-- TAB 1: CHAT -->
+        @if (activeSidebarTab() === 'chat') {
+          <div class="flex-1 flex flex-col min-h-0">
+            <div class="p-2.5 bg-slate-950/60 border-b border-slate-800 text-[11px] flex items-center justify-between text-slate-400">
+              <div class="flex items-center gap-1.5">
+                <span>Channel:</span>
+                <button
+                  (click)="chatChannel.set(chatChannel() === 'room' ? 'proximity' : 'room')"
+                  class="text-teal-300 font-medium hover:underline focus:outline-none"
+                >
+                  {{ chatChannel() === 'proximity' ? 'Proximity & Zone' : 'All Room' }}
+                </button>
+              </div>
+              <span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">Spatial Mode</span>
+            </div>
+
+            <!-- Messages Stream -->
+            <div class="flex-1 p-3 overflow-y-auto space-y-2.5 text-xs custom-scrollbar">
+              @for (msg of api.chatMessages(); track msg.id) {
+                @if (msg.channel === 'system') {
+                  <div class="bg-slate-800/60 p-2 rounded text-[11px] text-teal-300 border-l-2 border-teal-500">
+                    <span class="font-bold">[System]</span> {{ msg.text }}
+                  </div>
+                } @else {
+                  <div class="bg-slate-800/40 p-2 rounded hover:bg-slate-800/80 transition-colors">
+                    <div class="flex items-center justify-between mb-0.5">
+                      <span class="font-semibold text-slate-200 text-[11px]">{{ msg.display_name }}</span>
+                      <span class="text-[9px] text-slate-500 font-mono">{{ formatTime(msg.timestamp) }}</span>
+                    </div>
+                    <p class="text-slate-300 break-words">{{ msg.text }}</p>
+                  </div>
+                }
+              } @empty {
+                <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                  <span>💬 No messages yet</span>
+                  <span class="text-[10px] mt-1">Spatial proximity or room-wide chat</span>
+                </div>
+              }
+            </div>
+
+            <!-- Input form -->
+            <form (submit)="sendChatMessage(); $event.preventDefault()" class="p-2.5 border-t border-slate-800 flex gap-1.5 bg-slate-900">
+              <input
+                type="text"
+                [(ngModel)]="chatInput"
+                name="chatInput"
+                placeholder="Send spatial message..."
+                class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500"
+              />
+              <button
+                type="submit"
+                class="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-slate-950 font-bold rounded-lg text-xs transition-colors"
+              >
+                Send
+              </button>
+            </form>
+          </div>
+        }
+
+        <!-- TAB 2: USERS DIRECTORY -->
+        @if (activeSidebarTab() === 'users') {
+          <div class="flex-1 p-3 overflow-y-auto space-y-2 text-xs custom-scrollbar">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">In This Lounge</div>
+            <div class="space-y-1.5">
+              <!-- Self user -->
+              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-800/60 border border-slate-700/80">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full" [style.backgroundColor]="userColor()"></span>
+                  <div>
+                    <div class="font-semibold text-xs text-white">{{ userName() }} (You)</div>
+                    <div class="text-[10px] text-teal-400 capitalize">{{ canvasComp?.currentZoneTitle() || 'Lobby' }}</div>
+                  </div>
+                </div>
+                <span class="text-xs">{{ webrtc.isMicEnabled() ? '🎤' : '🔇' }}</span>
+              </div>
+
+              <!-- Peers -->
+              @for (peer of api.peers().values(); track peer.peer_id) {
+                <div class="flex items-center justify-between p-2 rounded-lg bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800/70 transition">
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full" [style.backgroundColor]="peer.avatar_config.hair_color"></span>
+                    <div>
+                      <div class="font-semibold text-xs text-white">{{ peer.display_name }}</div>
+                      <div class="text-[10px] text-teal-400 capitalize">{{ peer.private_zone_id || 'Main Lobby' }}</div>
+                    </div>
+                  </div>
+                  <span class="text-xs">{{ !peer.mic_muted ? '🎤' : '🔇' }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- TAB 3: LIVE POSTGRESQL ORM STREAM -->
+        @if (activeSidebarTab() === 'logs') {
+          <div class="flex-1 p-3 overflow-y-auto font-mono text-[11px] text-slate-300 space-y-2 custom-scrollbar bg-slate-950">
+            <div class="flex items-center justify-between text-teal-400 border-b border-slate-800 pb-1 mb-2">
+              <span>[PostgreSQL ORM Stream]</span>
+              <span class="text-[9px] bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-800">AUTO-MIGRATE: OK</span>
+            </div>
+            <div class="space-y-1 text-[10px]">
+              @for (log of ormLog.logs(); track log.id) {
+                <div class="py-0.5 border-b border-slate-900 flex items-start gap-1">
+                  <span class="text-slate-500">{{ log.timestamp }}</span>
+                  <span class="font-bold {{ log.colorClass }}">[{{ log.action }}]</span>
+                  <span class="text-slate-300 break-all">{{ log.payload }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </aside>
+    }
+  </main>
+
+  <!-- Footer (Matching demo.html) -->
+  <footer class="h-16 bg-slate-900 border-t border-slate-800 flex items-center justify-between px-6 z-20 shrink-0 select-none">
+    <div class="flex items-center gap-3">
+      <!-- Avatar customization picker -->
+      <div class="flex items-center gap-2 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700 shadow-sm">
+        <div
+          (click)="showAvatarSelector.set(true)"
+          class="w-6 h-6 rounded-full border border-white/40 cursor-pointer shadow hover:scale-110 transition flex items-center justify-center overflow-hidden"
+          [style.backgroundColor]="userColor()"
+          title="Click to customize avatar"
+        >
+          <img
+            [src]="'/assets/sprites/characters/' + userCharacter() + '_down.png'"
+            [alt]="userCharacter()"
+            class="w-5 h-7 object-contain pixelated scale-90"
+          />
+        </div>
+        <input
+          type="text"
+          [ngModel]="userName()"
+          (ngModelChange)="onDisplayNameChange($event)"
+          class="bg-transparent text-xs text-white font-semibold focus:outline-none w-20 border-b border-transparent focus:border-teal-500"
+          title="Your Display Name"
+        />
+        <button
+          type="button"
+          (click)="showAvatarSelector.set(true)"
+          id="btn-open-avatar-selector"
+          class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 transition flex items-center gap-1 cursor-pointer"
+          title="Open Avatar Selection"
+        >
+          <span>👾</span>
+          <span>Avatar</span>
+        </button>
+      </div>
+
+      <!-- Quick Emotes Bar -->
+      <div class="hidden sm:flex items-center gap-1 bg-slate-800/60 p-1 rounded-xl border border-slate-700">
+        <button (click)="sendEmote('👋')" class="px-2 py-1 hover:bg-slate-700 rounded text-sm transition-all" title="Wave">👋</button>
+        <button (click)="sendEmote('☕')" class="px-2 py-1 hover:bg-slate-700 rounded text-sm transition-all" title="Coffee">☕</button>
+        <button (click)="sendEmote('💡')" class="px-2 py-1 hover:bg-slate-700 rounded text-sm transition-all" title="Idea">💡</button>
+        <button (click)="sendEmote('🔥')" class="px-2 py-1 hover:bg-slate-700 rounded text-sm transition-all" title="Fire">🔥</button>
+        <button (click)="sendEmote('❤️')" class="px-2 py-1 hover:bg-slate-700 rounded text-sm transition-all" title="Love">❤️</button>
+      </div>
+    </div>
+
+    <!-- Center Control Buttons -->
+    <div class="flex items-center gap-2">
+      <!-- Mic Button -->
+      <button
+        (click)="toggleMic()"
+        class="px-4 py-2 rounded-xl font-medium text-xs flex items-center gap-2 transition-all shadow-md text-white"
+        [class.bg-emerald-600]="webrtc.isMicEnabled()"
+        [class.hover:bg-emerald-500]="webrtc.isMicEnabled()"
+        [class.bg-rose-600]="!webrtc.isMicEnabled()"
+        [class.hover:bg-rose-500]="!webrtc.isMicEnabled()"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3z" />
+        </svg>
+        <span>{{ webrtc.isMicEnabled() ? 'Mic On' : 'Muted' }}</span>
+      </button>
+
+      <!-- Cam Button -->
+      <button
+        (click)="toggleCam()"
+        class="px-4 py-2 rounded-xl font-medium text-xs flex items-center gap-2 transition-all shadow-md"
+        [class.bg-teal-600]="webrtc.isCameraEnabled()"
+        [class.text-slate-950]="webrtc.isCameraEnabled()"
+        [class.font-bold]="webrtc.isCameraEnabled()"
+        [class.bg-slate-800]="!webrtc.isCameraEnabled()"
+        [class.hover:bg-slate-700]="!webrtc.isCameraEnabled()"
+        [class.text-slate-200]="!webrtc.isCameraEnabled()"
+        [class.border]="!webrtc.isCameraEnabled()"
+        [class.border-slate-700]="!webrtc.isCameraEnabled()"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+        <span>{{ webrtc.isCameraEnabled() ? 'Camera On' : 'Camera Off' }}</span>
+      </button>
+
+      <!-- Ambient Jukebox / Chill LoFi Music (Tone.js) -->
+      <button
+        (click)="toggleMusic()"
+        class="px-3.5 py-2 rounded-xl font-medium text-xs flex items-center gap-1.5 transition-all"
+        [class.bg-teal-600]="api.spatialAudio.isLofiPlaying()"
+        [class.text-slate-950]="api.spatialAudio.isLofiPlaying()"
+        [class.font-bold]="api.spatialAudio.isLofiPlaying()"
+        [class.bg-slate-800]="!api.spatialAudio.isLofiPlaying()"
+        [class.hover:bg-slate-700]="!api.spatialAudio.isLofiPlaying()"
+        [class.text-slate-200]="!api.spatialAudio.isLofiPlaying()"
+        [class.border]="!api.spatialAudio.isLofiPlaying()"
+        [class.border-slate-700]="!api.spatialAudio.isLofiPlaying()"
+      >
+        <span class="text-sm">🎵</span>
+        <span>{{ api.spatialAudio.isLofiPlaying() ? 'Lofi: Playing' : 'Lofi Chill: Off' }}</span>
+      </button>
+
+      <!-- Screen Share Broadcast Toggle -->
+      <button
+        (click)="toggleScreen()"
+        class="px-3.5 py-2 rounded-xl font-medium text-xs flex items-center gap-1.5 transition-all shadow-md"
+        [class.bg-teal-500]="webrtc.isScreenSharing()"
+        [class.hover:bg-teal-400]="webrtc.isScreenSharing()"
+        [class.text-slate-950]="webrtc.isScreenSharing()"
+        [class.font-bold]="webrtc.isScreenSharing()"
+        [class.shadow-teal-500/30]="webrtc.isScreenSharing()"
+        [class.bg-slate-800]="!webrtc.isScreenSharing()"
+        [class.hover:bg-slate-700]="!webrtc.isScreenSharing()"
+        [class.text-slate-200]="!webrtc.isScreenSharing()"
+        [class.border]="!webrtc.isScreenSharing()"
+        [class.border-slate-700]="!webrtc.isScreenSharing()"
+        title="{{ webrtc.isScreenSharing() ? 'Stop Sharing Your Screen' : 'Share Your Screen' }}"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        <span>{{ webrtc.isScreenSharing() ? 'Stop Share' : 'Share Screen' }}</span>
+      </button>
+    </div>
+
+    <!-- Right Sidebar Toggle Button -->
+    <div class="flex items-center gap-2">
+      <button
+        (click)="isSidebarOpen.set(!isSidebarOpen())"
+        class="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
+        title="Toggle Chat / Users / ORM Logs"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      </button>
+    </div>
+  </footer>
+  } @else {
+    <!-- Lobby / Room Gateway View (When no room is active: STRICTLY NO DEFAULT ROOM) -->
+    <div class="relative flex-1 w-full h-full overflow-y-auto custom-scrollbar flex flex-col bg-slate-950 text-slate-100 animate-fade-in">
+      <!-- Lobby Header -->
+      <header class="h-16 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-20 shrink-0 select-none">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-teal-500/20">
+            <svg class="w-5 h-5 text-slate-950 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-bold text-white tracking-wide text-base">Twominal Lounge</h1>
+              <span class="px-2 py-0.5 text-[10px] font-semibold bg-teal-500/20 text-teal-300 rounded-full border border-teal-500/30">Lobby Gateway</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            (click)="showDiagnostics.set(true)"
+            class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition"
+            title="Observability Telemetry"
+          >
+            📊
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Lobby Content -->
+      <main class="flex-1 max-w-5xl w-full mx-auto p-6 md:p-8 space-y-8">
+        <!-- Hero Banner -->
+        <div class="text-center space-y-3 pt-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-950/80 border border-teal-500/40 text-teal-300 text-xs font-medium">
+            <span class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+            <span>No Default Room • Dedicated Spatial Office Pods</span>
+          </div>
+          <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+            Step Into Your Virtual Office
+          </h2>
+          <p class="text-xs md:text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
+            Create a custom 2D spatial lounge for your team or enter with a room code or shared URL.
+          </p>
+        </div>
+
+        <!-- User Persona / Avatar Bar -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+          <div class="flex items-center gap-3.5 w-full sm:w-auto">
+            <div
+              (click)="showAvatarSelector.set(true)"
+              class="w-12 h-12 rounded-full border-2 border-white/50 cursor-pointer shadow-lg hover:scale-105 transition flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden group"
+              [style.backgroundColor]="userColor()"
+              title="Click to customize avatar"
+            >
+              <img
+                [src]="'/assets/sprites/characters/' + userCharacter() + '_down.png'"
+                [alt]="userCharacter()"
+                class="w-8 h-10 object-contain pixelated drop-shadow group-hover:scale-110 transition"
+              />
+            </div>
+            <div class="flex-1">
+              <label class="block text-[11px] text-slate-400 font-medium mb-0.5">Your Persona / Display Name</label>
+              <input
+                type="text"
+                [ngModel]="userName()"
+                (ngModelChange)="onDisplayNameChange($event)"
+                class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-semibold focus:border-teal-500 focus:outline-none w-full sm:w-48"
+                placeholder="Enter display name"
+              />
+            </div>
+          </div>
+          <div class="text-xs text-slate-400 flex items-center gap-2.5 self-start sm:self-center">
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800">
+              <span class="w-2.5 h-2.5 rounded-full" [style.backgroundColor]="userColor()"></span>
+              <span class="text-teal-300 font-semibold capitalize">{{ userCharacter() }}</span>
+            </div>
+            <button
+              (click)="showAvatarSelector.set(true)"
+              id="btn-lobby-avatar-customize"
+              class="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-slate-950 font-bold text-xs shadow-md shadow-teal-500/20 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>👾</span>
+              <span>Select Avatar</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Two Primary Actions (Create vs Join) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Card 1: Create a Room -->
+          <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-2xl transition-all">
+            <div class="space-y-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20 flex items-center justify-center text-xl">
+                  🛋️
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-white">Create a Lounge Room</h3>
+                  <p class="text-xs text-slate-400">Generate a custom spatial space with whiteboard & audio pods</p>
+                </div>
+              </div>
+
+              <div class="space-y-3 pt-2">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">
+                    Room Name <span class="text-teal-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    [ngModel]="newRoomName()"
+                    (ngModelChange)="newRoomName.set($event)"
+                    placeholder="e.g. Design Studio & All-Hands"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-200 placeholder-slate-500 focus:border-teal-500 focus:outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">
+                    Room Code <span class="text-slate-500 font-normal">(Optional, auto-generated if blank)</span>
+                  </label>
+                  <input
+                    type="text"
+                    [ngModel]="newRoomCode()"
+                    (ngModelChange)="newRoomCode.set($event)"
+                    placeholder="e.g. design-studio"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-200 font-mono placeholder-slate-500 focus:border-teal-500 focus:outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">
+                    Room Template & Size
+                  </label>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      (click)="newRoomWidth.set(30); newRoomHeight.set(20)"
+                      class="py-2 px-1 rounded-xl text-xs font-medium border text-center transition"
+                      [class.bg-teal-950]="newRoomWidth() === 30"
+                      [class.border-teal-500]="newRoomWidth() === 30"
+                      [class.text-teal-300]="newRoomWidth() === 30"
+                      [class.bg-slate-950]="newRoomWidth() !== 30"
+                      [class.border-slate-800]="newRoomWidth() !== 30"
+                      [class.text-slate-400]="newRoomWidth() !== 30"
+                    >
+                      <div class="font-bold">Standard</div>
+                      <div class="text-[10px] opacity-75">30 x 20</div>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="newRoomWidth.set(20); newRoomHeight.set(15)"
+                      class="py-2 px-1 rounded-xl text-xs font-medium border text-center transition"
+                      [class.bg-teal-950]="newRoomWidth() === 20"
+                      [class.border-teal-500]="newRoomWidth() === 20"
+                      [class.text-teal-300]="newRoomWidth() === 20"
+                      [class.bg-slate-950]="newRoomWidth() !== 20"
+                      [class.border-slate-800]="newRoomWidth() !== 20"
+                      [class.text-slate-400]="newRoomWidth() !== 20"
+                    >
+                      <div class="font-bold">Cozy Pod</div>
+                      <div class="text-[10px] opacity-75">20 x 15</div>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="newRoomWidth.set(40); newRoomHeight.set(25)"
+                      class="py-2 px-1 rounded-xl text-xs font-medium border text-center transition"
+                      [class.bg-teal-950]="newRoomWidth() === 40"
+                      [class.border-teal-500]="newRoomWidth() === 40"
+                      [class.text-teal-300]="newRoomWidth() === 40"
+                      [class.bg-slate-950]="newRoomWidth() !== 40"
+                      [class.border-slate-800]="newRoomWidth() !== 40"
+                      [class.text-slate-400]="newRoomWidth() !== 40"
+                    >
+                      <div class="font-bold">Grand Hall</div>
+                      <div class="text-[10px] opacity-75">40 x 25</div>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">
+                    Description <span class="text-slate-500 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    [ngModel]="newRoomDesc()"
+                    (ngModelChange)="newRoomDesc.set($event)"
+                    placeholder="Brief description of the room's purpose"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-200 placeholder-slate-500 focus:border-teal-500 focus:outline-none transition"
+                  />
+                </div>
+
+                @if (createError()) {
+                  <div class="p-2.5 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">
+                    {{ createError() }}
+                  </div>
+                }
+              </div>
+            </div>
+
+            <button
+              (click)="createAndEnterRoom()"
+              [disabled]="!newRoomName().trim() || isCreatingRoom()"
+              class="w-full mt-6 py-3 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-40 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/20 transition flex items-center justify-center gap-2"
+            >
+              @if (isCreatingRoom()) {
+                <span class="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                <span>Creating Lounge Space...</span>
+              } @else {
+                <span>🛋️</span>
+                <span>Create Room & Enter</span>
+              }
+            </button>
+          </div>
+
+          <!-- Card 2: Join by Room Code or Shared Link -->
+          <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-2xl transition-all">
+            <div class="space-y-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center text-xl">
+                  🔗
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-white">Join by Code or Link</h3>
+                  <p class="text-xs text-slate-400">Enter a room code or paste a shared invite link</p>
+                </div>
+              </div>
+
+              <div class="space-y-3 pt-2">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">
+                    Room Code or Shared URL <span class="text-teal-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    [ngModel]="joinCodeInput()"
+                    (ngModelChange)="joinCodeInput.set($event)"
+                    (keyup.enter)="joinRoomByCode(joinCodeInput())"
+                    placeholder="e.g. design-studio or paste https://.../?room=xyz"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-200 placeholder-slate-500 focus:border-teal-500 focus:outline-none transition"
+                  />
+                  <p class="text-[11px] text-slate-500 mt-1">
+                    Paste full invite URLs (e.g. <code class="text-slate-400">http://...?room=my-room</code>) or enter just the room code.
+                  </p>
+                </div>
+
+                @if (joinError()) {
+                  <div class="p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-start gap-2">
+                    <span class="text-sm">⚠️</span>
+                    <span>{{ joinError() }}</span>
+                  </div>
+                }
+
+                <div class="p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 space-y-1.5 text-xs text-slate-400">
+                  <div class="font-semibold text-slate-300 flex items-center gap-1.5">
+                    <span>💡</span>
+                    <span>Quick Tip</span>
+                  </div>
+                  <p class="text-[11px] leading-relaxed">
+                    Once inside any room, click <strong>"Share Link"</strong> or <strong>"Code: ..."</strong> in the top header to copy and invite peers to your room.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              (click)="joinRoomByCode(joinCodeInput())"
+              [disabled]="!joinCodeInput().trim() || isJoining()"
+              class="w-full mt-6 py-3 px-4 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-slate-950 font-bold text-xs shadow-lg shadow-sky-500/20 transition flex items-center justify-center gap-2"
+            >
+              @if (isJoining()) {
+                <span class="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                <span>Connecting to Room...</span>
+              } @else {
+                <span>🚪</span>
+                <span>Join Room</span>
+              }
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Public Rooms Directory -->
+        <div class="space-y-4 pt-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🌐</span>
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider">Active Lounge Spaces</h3>
+              <span class="text-xs text-slate-400">({{ publicRooms().length }} registered)</span>
+            </div>
+            <button
+              (click)="loadPublicRooms()"
+              [disabled]="isLoadingPublicRooms()"
+              class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition flex items-center gap-1"
+              title="Refresh Room List"
+            >
+              <span [class.animate-spin]="isLoadingPublicRooms()">🔄</span>
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            @for (room of publicRooms(); track room.slug) {
+              <div
+                (click)="switchRoom(room.slug)"
+                class="p-4 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-teal-500/60 transition cursor-pointer flex flex-col justify-between group shadow"
+              >
+                <div>
+                  <div class="flex items-start justify-between gap-2">
+                    <h4 class="text-sm font-bold text-slate-200 group-hover:text-teal-300 transition line-clamp-1">
+                      {{ room.name }}
+                    </h4>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-teal-950 text-teal-400 border border-teal-500/30 shrink-0">
+                      Code: {{ room.slug }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ room.description || 'Spatial virtual office space' }}</p>
+                </div>
+
+                <div class="flex items-center justify-between mt-4 pt-2 border-t border-slate-800/60 text-xs">
+                  <span class="flex items-center gap-1.5 text-slate-400 font-mono text-[11px]">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>{{ room.active_occupancy }} online</span>
+                  </span>
+                  <span class="text-teal-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                    Enter Space →
+                  </span>
+                </div>
+              </div>
+            } @empty {
+              <div class="col-span-full text-center py-8 px-4 border border-dashed border-slate-800 rounded-2xl bg-slate-950/30">
+                <span class="text-3xl">🏜️</span>
+                <h4 class="text-sm font-bold text-slate-300 mt-2">No Active Rooms Yet</h4>
+                <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  Strictly no default room exists. Create your first lounge above or ask a teammate for a room code or shared invite link!
+                </p>
+              </div>
+            }
+          </div>
+        </div>
+      </main>
+    </div>
+  }
+
+  <!-- Modals -->
+  @if (showTechStack()) {
+    <app-tech-stack-modal (close)="showTechStack.set(false)"></app-tech-stack-modal>
+  }
+
+  @if (showWhiteboard()) {
+    <app-whiteboard-modal (close)="showWhiteboard.set(false)"></app-whiteboard-modal>
+  }
+
+  @if (showBilling() && currentRoom()) {
+    <app-billing-modal
+      [roomSlug]="currentRoom()!.slug"
+      [currentTierId]="currentRoom()!.pricing_tier"
+      (close)="showBilling.set(false)"
+      (activated)="currentRoom()!.pricing_tier = $event"
+    ></app-billing-modal>
+  }
+
+  @if (showRoomEditor() && currentRoom()) {
+    <app-room-editor-modal
+      [room]="currentRoom()!"
+      (close)="showRoomEditor.set(false)"
+      (saved)="switchRoom(currentRoom()!.slug)"
+      (openBuildMode)="showRoomEditor.set(false); isBuildMode.set(true)"
+    ></app-room-editor-modal>
+  }
+
+  @if (showRoomSwitcher()) {
+    <app-room-switcher-modal
+      (close)="showRoomSwitcher.set(false)"
+      (selectRoom)="switchRoom($event)"
+    ></app-room-switcher-modal>
+  }
+
+  @if (showDiagnostics()) {
+    <app-diagnostics-modal
+      [playerX]="canvasComp?.playerX || 0"
+      [playerY]="canvasComp?.playerY || 0"
+      [playerDirection]="canvasComp?.playerDirection || 'down'"
+      [playerState]="canvasComp?.playerMotionState || 'idle'"
+      [currentZone]="canvasComp?.currentPrivateZoneName() || null"
+      (close)="showDiagnostics.set(false)"
+    ></app-diagnostics-modal>
+  }
+
+  @if (showAvatarSelector()) {
+    <app-avatar-selector-modal
+      [currentCharacter]="userCharacter()"
+      [currentColor]="userColor()"
+      [currentName]="userName()"
+      (save)="onAvatarCustomized($event)"
+      (close)="showAvatarSelector.set(false)"
+    ></app-avatar-selector-modal>
+  }
+</div>

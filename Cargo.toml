@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "src/TwominalLounge",
+]
+resolver = "2"

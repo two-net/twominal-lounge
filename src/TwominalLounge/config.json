@@ -1,0 +1,35 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 3000,
+    "cors_allowed_origins": [
+      "http://localhost:4200",
+      "http://127.0.0.1:4200",
+      "http://localhost:3000"
+    ]
+  },
+  "database": {
+    "url": "postgres://postgres:postgres@localhost:5432/twominal_lounge",
+    "max_connections": 10,
+    "min_connections": 2,
+    "auto_migrate": true
+  },
+  "billing": {
+    "model": "one-time-and-pay-per-room",
+    "currency": "USD",
+    "free_tier_max_occupancy": 5,
+    "pay_per_room_price_cents": 499,
+    "lifetime_license_price_cents": 4900
+  },
+  "spatial": {
+    "tile_size": 32,
+    "proximity_radius_tiles": 5.0,
+    "proximity_falloff_tiles": 8.0,
+    "max_room_width": 50,
+    "max_room_height": 50
+  },
+  "logging": {
+    "level": "debug",
+    "format": "json"
+  }
+}
